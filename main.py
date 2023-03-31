@@ -1,4 +1,17 @@
 import requests
+import zipfile
+import tempfile
+import os
+
+
+def extract_zip_to_temp_dir(zip_path: str) -> str:
+    temp_dir = tempfile.mkdtemp()
+
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(temp_dir)
+
+    return temp_dir
+
 
 def download_repo_zip(url: str, target_path: str):
     response = requests.get(url, stream=True)
