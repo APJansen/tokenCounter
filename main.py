@@ -4,6 +4,48 @@ import tempfile
 import os
 from pygments.lexers import get_lexer_for_filename, guess_lexer_for_filename
 from pygments.util import ClassNotFound
+from tiktoken import Tokenizer
+from tiktoken.tokenizer import Tokenizer as OpenAITokenizer
+
+def count_tokens(text: str) -> int:
+    tokenizer = OpenAITokenizer()
+    tokens = tokenizer.tokenize(text)
+    return len(tokens)
+
+def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
+    tokens_by_language = {}
+
+    for root, _, files in os.walk(directory_path):
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+
+            if not os.path.isfile(file_path):
+                continue
+
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                continue
+
+            try:
+                lexer = get_lexer_for_filename(file_path, content)
+            except ClassNotFound:
+                try:
+                    lexer = guess_lexer_for_filename(file_path, content)
+                except ClassNotFound:
+                    continue
+
+            language = lexer.name
+            token_count = count_tokens(content)
+
+            if language not in tokens_by_language:
+                tokens_by_language[language] = 0
+
+            tokens_by_language[language] += token_count
+
+    return tokens_by_language
+
 
 def count_lines_of_code(file_path: str) -> int:
     try:
