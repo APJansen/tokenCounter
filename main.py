@@ -206,6 +206,25 @@ def analyze_repository(directory_path: str) -> dict[str, dict[str, float]]:
 
     return analysis_results
 
+def print_analysis_results(analysis_results: dict[str, dict[str, float]]):
+    """
+    Print the analysis results as a table, sorted by lines of code.
+
+    Args:
+        analysis_results (dict[str, dict[str, float]]): A dictionary containing the analysis results.
+    """
+    # Sort languages by lines of code
+    sorted_results = sorted(analysis_results.items(), key=lambda x: x[1]['lines_of_code'], reverse=True)
+
+    # Print header
+    print("\nResults:")
+    print("{:<20} {:<15} {:<15} {:<15}".format("Language", "Lines of code", "Tokens", "Tokens per line"))
+
+    # Print rows
+    for language, result in sorted_results:
+        print("{:<20} {:<15} {:<15} {:<15.2f}".format(language, result['lines_of_code'], result['tokens'], result['tokens_per_line']))
+
+
 def main():
     """
     Main function for the script. Prompts the user for a GitHub repository URL,
@@ -225,12 +244,7 @@ def main():
     print("Analyzing repository...")
     analysis_results = analyze_repository(temp_dir)
 
-    print("\nResults:")
-    for language, result in analysis_results.items():
-        print(f"{language}:")
-        print(f"  Lines of code: {result['lines_of_code']}")
-        print(f"  Tokens: {result['tokens']}")
-        print(f"  Tokens per line: {result['tokens_per_line']:.2f}")
+    print_analysis_results(analysis_results)
 
     os.remove(zip_path)
     shutil.rmtree(temp_dir)
