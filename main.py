@@ -2,14 +2,15 @@ import requests
 import zipfile
 import tempfile
 import os
+import shutil
 from pygments.lexers import get_lexer_for_filename, guess_lexer_for_filename
 from pygments.util import ClassNotFound
-from tiktoken import Tokenizer
-from tiktoken.tokenizer import Tokenizer as OpenAITokenizer
+import tiktoken
+
 
 def count_tokens(text: str) -> int:
-    tokenizer = OpenAITokenizer()
-    tokens = tokenizer.tokenize(text)
+    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+    tokens = encoding.encode(text)
     return len(tokens)
 
 def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
@@ -89,7 +90,7 @@ def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
                     continue
 
             language = lexer.name
-            lines_of_code = sum(1 for _ in lexer.get_lines(content))
+            lines_of_code = content.count('\n')
 
             if language not in loc_by_language:
                 loc_by_language[language] = 0
