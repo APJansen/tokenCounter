@@ -9,11 +9,29 @@ import tiktoken
 
 
 def count_tokens(text: str) -> int:
+    """
+    Count the number of tokens in a given text using the GPT-3.5 tokenizer.
+
+    Args:
+        text (str): The text to tokenize and count.
+
+    Returns:
+        int: The total number of tokens in the text.
+    """
     encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
     tokens = encoding.encode(text)
     return len(tokens)
 
 def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
+    """
+    Count tokens in each source code file in a directory, grouped by language.
+
+    Args:
+        directory_path (str): The path to the directory containing the source code files.
+
+    Returns:
+        dict[str, int]: A dictionary mapping programming languages to the total number of tokens.
+    """
     tokens_by_language = {}
 
     for root, _, files in os.walk(directory_path):
@@ -47,8 +65,16 @@ def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
 
     return tokens_by_language
 
-
 def count_lines_of_code(file_path: str) -> int:
+    """
+    Count the number of lines of code in a source code file.
+
+    Args:
+        file_path (str): The path to the source code file.
+
+    Returns:
+        int: The total number of lines of code in the file.
+    """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -66,6 +92,15 @@ def count_lines_of_code(file_path: str) -> int:
     return sum(1 for _ in lexer.get_lines(content))
 
 def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
+    """
+    Count lines of code in each source code file in a directory, grouped by language.
+
+    Args:
+        directory_path (str): The path to the directory containing the source code files.
+
+    Returns:
+        dict[str, int]: A dictionary mapping programming languages to the total number of lines of code.
+    """
     loc_by_language = {}
 
     for root, _, files in os.walk(directory_path):
@@ -99,8 +134,16 @@ def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
 
     return loc_by_language
 
-
 def extract_zip_to_temp_dir(zip_path: str) -> str:
+    """
+    Extract a zip file to a temporary directory.
+
+    Args:
+        zip_path (str): The path to the zip file.
+
+    Returns:
+        str: The path to the temporary directory containing the extracted files.
+    """
     temp_dir = tempfile.mkdtemp()
 
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -108,8 +151,14 @@ def extract_zip_to_temp_dir(zip_path: str) -> str:
 
     return temp_dir
 
-
 def download_repo_zip(url: str, target_path: str):
+    """
+    Download a GitHub repository's zip file and save it to a specified path.
+
+    Args:
+        url (str): The URL of the zip file to download.
+        target_path (str): The path where the zip file should be saved.
+    """
     response = requests.get(url, stream=True)
     response.raise_for_status()
 
@@ -117,8 +166,12 @@ def download_repo_zip(url: str, target_path: str):
         for chunk in response.iter_content(chunk_size=8192):
             f.write(chunk)
 
-
 def main():
+    """
+    Main function for the script. Prompts the user for a GitHub repository URL,
+    downloads the repository, analyzes the lines of code and tokens in the source code files,
+    and displays the results.
+    """
     repo_url = input("Enter the GitHub repository URL (e.g., https://github.com/user/repo): ").strip()
     zip_url = f"{repo_url}/archive/refs/heads/main.zip"
     zip_path = "repo.zip"
