@@ -166,6 +166,46 @@ def download_repo_zip(url: str, target_path: str):
         for chunk in response.iter_content(chunk_size=8192):
             f.write(chunk)
 
+def get_zip_url(repo_url: str) -> str:
+    """
+    Get the URL of the zip file for a GitHub repository.
+
+    Args:
+        repo_url (str): The GitHub repository URL.
+
+    Returns:
+        str: The URL of the zip file to download.
+    """
+    return f"{repo_url}/archive/refs/heads/main.zip"
+
+
+def analyze_repository(directory_path: str) -> dict[str, dict[str, float]]:
+    """
+    Analyze a repository and return the results.
+
+    Args:
+        directory_path (str): The path to the repository directory.
+
+    Returns:
+        dict[str, dict[str, float]]: A dictionary containing the analysis results.
+    """
+    loc_by_language = count_lines_of_code_in_directory(directory_path)
+    tokens_by_language = count_tokens_in_directory(directory_path)
+
+    analysis_results = {}
+    for language in loc_by_language:
+        loc = loc_by_language[language]
+        tokens = tokens_by_language.get(language, 0)
+        tokens_per_line = tokens / loc if loc > 0 else 0
+
+        analysis_results[language] = {
+            "lines_of_code": loc,
+            "tokens": tokens,
+            "tokens_per_line": tokens_per_line
+        }
+
+    return analysis_results
+
 def main():
     """
     Main function for the script. Prompts the user for a GitHub repository URL,
@@ -173,7 +213,7 @@ def main():
     and displays the results.
     """
     repo_url = input("Enter the GitHub repository URL (e.g., https://github.com/user/repo): ").strip()
-    zip_url = f"{repo_url}/archive/refs/heads/main.zip"
+    zip_url = get_zip_url(repo_url)
     zip_path = "repo.zip"
 
     print("Downloading repository...")
@@ -183,19 +223,14 @@ def main():
     temp_dir = extract_zip_to_temp_dir(zip_path)
 
     print("Analyzing repository...")
-    loc_by_language = count_lines_of_code_in_directory(temp_dir)
-    tokens_by_language = count_tokens_in_directory(temp_dir)
+    analysis_results = analyze_repository(temp_dir)
 
     print("\nResults:")
-    for language in loc_by_language:
-        loc = loc_by_language[language]
-        tokens = tokens_by_language.get(language, 0)
-        tokens_per_line = tokens / loc if loc > 0 else 0
-
+    for language, result in analysis_results.items():
         print(f"{language}:")
-        print(f"  Lines of code: {loc}")
-        print(f"  Tokens: {tokens}")
-        print(f"  Tokens per line: {tokens_per_line:.2f}")
+        print(f"  Lines of code: {result['lines_of_code']}")
+        print(f"  Tokens: {result['tokens']}")
+        print(f"  Tokens per line: {result['tokens_per_line']:.2f}")
 
     os.remove(zip_path)
     shutil.rmtree(temp_dir)
