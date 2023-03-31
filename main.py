@@ -117,6 +117,36 @@ def download_repo_zip(url: str, target_path: str):
             f.write(chunk)
 
 
+def main():
+    repo_url = input("Enter the GitHub repository URL (e.g., https://github.com/user/repo): ").strip()
+    zip_url = f"{repo_url}/archive/refs/heads/main.zip"
+    zip_path = "repo.zip"
+
+    print("Downloading repository...")
+    download_repo_zip(zip_url, zip_path)
+
+    print("Extracting repository...")
+    temp_dir = extract_zip_to_temp_dir(zip_path)
+
+    print("Analyzing repository...")
+    loc_by_language = count_lines_of_code_in_directory(temp_dir)
+    tokens_by_language = count_tokens_in_directory(temp_dir)
+
+    print("\nResults:")
+    for language in loc_by_language:
+        loc = loc_by_language[language]
+        tokens = tokens_by_language.get(language, 0)
+        tokens_per_line = tokens / loc if loc > 0 else 0
+
+        print(f"{language}:")
+        print(f"  Lines of code: {loc}")
+        print(f"  Tokens: {tokens}")
+        print(f"  Tokens per line: {tokens_per_line:.2f}")
+
+    os.remove(zip_path)
+    shutil.rmtree(temp_dir)
+
+
 if __name__ == "__main__":
-    print("GitHub Token Analyzer")
+    main()
 
