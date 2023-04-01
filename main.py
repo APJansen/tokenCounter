@@ -11,7 +11,18 @@ from typing import Optional, Callable, Dict, Tuple
 from contextlib import contextmanager
 
 
-def process_files_in_directory(directory_path: str, process_file_func: Callable[[str], Tuple[str, int]]) -> Dict[str, int]:
+def process_files_in_directory(directory_path: str, process_file_func: Callable[[str], int]) -> Dict[str, int]:
+    """
+    Process source code files in a directory using a given function, grouped by language.
+
+    Args:
+        directory_path (str): The path to the directory containing the source code files.
+        process_file_func (Callable[[str], int]): A function that takes a file's content as input, and returns
+                                                  a value to be accumulated for each language.
+
+    Returns:
+        Dict[str, int]: A dictionary mapping programming languages to the accumulated results.
+    """
     results_by_language = {}
 
     for root, _, files in os.walk(directory_path):
