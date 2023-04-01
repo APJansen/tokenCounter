@@ -11,6 +11,7 @@ from typing import Optional, Callable, Dict, Tuple
 import json
 from contextlib import contextmanager
 import re
+from tqdm import tqdm
 
 
 def process_files_in_directory(directory_path: str, process_file_func: Callable[[str], int]) -> Dict[str, int]:
@@ -26,29 +27,35 @@ def process_files_in_directory(directory_path: str, process_file_func: Callable[
     """
     results_by_language = {}
 
-    for root, _, files in os.walk(directory_path):
-        for file_name in files:
-            file_path = os.path.join(root, file_name)
+    # Get the total number of files
+    total_files = sum([len(files) for _, _, files in os.walk(directory_path)])
 
-            if not os.path.isfile(file_path):
-                continue
+    # Use tqdm to create a progress bar
+    with tqdm(total=total_files, desc="Processing files", unit="file", ncols=100) as progress_bar:
+        for root, _, files in os.walk(directory_path):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
 
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except UnicodeDecodeError:
-                continue
+                if not os.path.isfile(file_path):
+                    continue
 
-            language = get_language_from_content(file_path, content)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except UnicodeDecodeError:
+                    continue
 
-            if not language:
-                continue
+                language = get_language_from_content(file_path, content)
 
-            count = process_file_func(content)
-            if language not in results_by_language:
-                results_by_language[language] = 0
+                if language:
+                    count = process_file_func(content)
+                    if language not in results_by_language:
+                        results_by_language[language] = 0
 
-            results_by_language[language] += count
+                    results_by_language[language] += count
+
+                # Update progress bar
+                progress_bar.update(1)
 
     return results_by_language
 
@@ -117,21 +124,19 @@ def extract_zip_to_temp_dir(zip_path: str, temp_dir: str) -> None:
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(temp_dir)
 
-
 def download_repo_zip(url: str, target_path: str):
-    """
-    Download a GitHub repository's zip file and save it to a specified path.
-
-    Args:
-        url (str): The URL of the zip file to download.
-        target_path (str): The path where the zip file should be saved.
-    """
     response = requests.get(url, stream=True)
     response.raise_for_status()
 
+    total_size = int(response.headers.get("content-length", 0))
+
     with open(target_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
+        with tqdm(total=total_size, unit="B", unit_scale=True, desc="Downloading", ncols=100) as progress_bar:
+            progress_bar.set_postfix(file_size=f"{total_size / (1024 * 1024):.2f} MB", refresh=False)
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+                progress_bar.update(len(chunk))
+
 
 def get_zip_url(repo_url: str) -> str:
     """
