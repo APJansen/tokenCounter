@@ -8,6 +8,7 @@ from pygments.util import ClassNotFound
 from pygments.lexer import Lexer
 import tiktoken
 from typing import Optional, Callable, Dict, Tuple
+import json
 from contextlib import contextmanager
 
 
@@ -17,8 +18,7 @@ def process_files_in_directory(directory_path: str, process_file_func: Callable[
 
     Args:
         directory_path (str): The path to the directory containing the source code files.
-        process_file_func (Callable[[str], int]): A function that takes a file's content as input, and returns
-                                                  a value to be accumulated for each language.
+        process_file_func (Callable[[str], int]): A function that takes a file's content as input, and returns a value to be accumulated for each language.
 
     Returns:
         Dict[str, int]: A dictionary mapping programming languages to the accumulated results.
@@ -142,8 +142,23 @@ def get_zip_url(repo_url: str) -> str:
     Returns:
         str: The URL of the zip file to download.
     """
-    return f"{repo_url}/archive/refs/heads/master.zip"
+    # Extract the repository owner and name from the URL
+    repo_parts = repo_url.rstrip('/').split('/')[-2:]
+    if len(repo_parts) != 2:
+        raise ValueError("Invalid GitHub repository URL")
 
+    owner, repo_name = repo_parts
+
+    # Fetch the repository information from the GitHub API
+    api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+    response = requests.get(api_url)
+    response.raise_for_status()
+
+    # Extract the default branch name
+    repo_info = json.loads(response.text)
+    default_branch = repo_info["default_branch"]
+
+    return f"{repo_url}/archive/refs/heads/{default_branch}.zip"
 
 def analyze_repository(directory_path: str) -> dict[str, dict[str, float]]:
     """
