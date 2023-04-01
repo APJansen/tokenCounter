@@ -7,25 +7,40 @@ from pygments.lexers import get_lexer_for_filename, guess_lexer_for_filename
 from pygments.util import ClassNotFound
 from pygments.lexer import Lexer
 import tiktoken
-from typing import Optional
+from typing import Optional, Callable, Dict, Tuple
 from contextlib import contextmanager
 
 
-def count_tokens(text: str) -> int:
-    """
-    Count the number of tokens in a given text using the GPT-3.5 tokenizer.
+def process_files_in_directory(directory_path: str, process_file_func: Callable[[str], Tuple[str, int]]) -> Dict[str, int]:
+    results_by_language = {}
 
-    Args:
-        text (str): The text to tokenize and count.
+    for root, _, files in os.walk(directory_path):
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
 
-    Returns:
-        int: The total number of tokens in the text.
-    """
-    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-    tokens = encoding.encode(text)
-    return len(tokens)
+            if not os.path.isfile(file_path):
+                continue
 
-def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                continue
+
+            language = get_language_from_content(file_path, content)
+
+            if not language:
+                continue
+
+            count = process_file_func(content)
+            if language not in results_by_language:
+                results_by_language[language] = 0
+
+            results_by_language[language] += count
+
+    return results_by_language
+
+def count_tokens_in_directory(directory_path: str) -> Dict[str, int]:
     """
     Count tokens in each source code file in a directory, grouped by language.
 
@@ -33,58 +48,17 @@ def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
         directory_path (str): The path to the directory containing the source code files.
 
     Returns:
-        dict[str, int]: A dictionary mapping programming languages to the total number of tokens.
+        Dict[str, int]: A dictionary mapping programming languages to the total number of tokens.
     """
-    tokens_by_language = {}
 
-    for root, _, files in os.walk(directory_path):
-        for file_name in files:
-            file_path = os.path.join(root, file_name)
+    def count_tokens(text: str) -> int:
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        tokens = encoding.encode(text)
+        return len(tokens)
 
-            if not os.path.isfile(file_path):
-                continue
+    return process_files_in_directory(directory_path, count_tokens)
 
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except UnicodeDecodeError:
-                continue
-
-            lexer = get_lexer(file_path, content)
-            if not lexer: continue
-
-            language = lexer.name
-            token_count = count_tokens(content)
-
-            if language not in tokens_by_language:
-                tokens_by_language[language] = 0
-
-            tokens_by_language[language] += token_count
-
-    return tokens_by_language
-
-def count_lines_of_code(file_path: str) -> int:
-    """
-    Count the number of lines of code in a source code file.
-
-    Args:
-        file_path (str): The path to the source code file.
-
-    Returns:
-        int: The total number of lines of code in the file.
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except UnicodeDecodeError:
-        return 0
-
-    lexer = get_lexer(file_path, content)
-    if not lexer: return 0
-
-    return sum(1 for _ in lexer.get_lines(content))
-
-def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
+def count_lines_of_code_in_directory(directory_path: str) -> Dict[str, int]:
     """
     Count lines of code in each source code file in a directory, grouped by language.
 
@@ -92,54 +66,33 @@ def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
         directory_path (str): The path to the directory containing the source code files.
 
     Returns:
-        dict[str, int]: A dictionary mapping programming languages to the total number of lines of code.
+        Dict[str, int]: A dictionary mapping programming languages to the total number of lines of code.
     """
-    loc_by_language = {}
+    def process_file_lines(content: str) -> int:
+        return content.count('\n')
 
-    for root, _, files in os.walk(directory_path):
-        for file_name in files:
-            file_path = os.path.join(root, file_name)
+    return process_files_in_directory(directory_path, process_file_lines)
 
-            if not os.path.isfile(file_path):
-                continue
-
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except UnicodeDecodeError:
-                continue
-
-            lexer = get_lexer(file_path, content)
-            if not lexer: continue
-
-            language = lexer.name
-            lines_of_code = content.count('\n')
-
-            if language not in loc_by_language:
-                loc_by_language[language] = 0
-
-            loc_by_language[language] += lines_of_code
-
-    return loc_by_language
-
-def get_lexer(file_path: str, content: str) -> Optional[Lexer]:
+def get_language_from_content(file_path: str, content: str) -> Optional[str]:
     """
-    Get the appropriate lexer for a given file path and content.
+    Get the programming language name for a given file path and content.
 
     Args:
         file_path (str): The path to the file.
         content (str): The content of the file.
 
     Returns:
-        Optional[Lexer]: The lexer instance, or None if no suitable lexer is found.
+        Optional[str]: The programming language name or None if the language couldn't be determined.
     """
     try:
-        return get_lexer_for_filename(file_path, content)
+        lexer = get_lexer_for_filename(file_path, content)
     except ClassNotFound:
         try:
-            return guess_lexer_for_filename(file_path, content)
+            lexer = guess_lexer_for_filename(file_path, content)
         except ClassNotFound:
             return None
+
+    return lexer.name
 
 def extract_zip_to_temp_dir(zip_path: str, temp_dir: str) -> None:
     """
