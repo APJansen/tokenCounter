@@ -175,23 +175,32 @@ def TemporaryDirectoryWithZip(zip_url: str):
     finally:
         shutil.rmtree(temp_dir)
 
-def print_analysis_results(analysis_results: dict[str, dict[str, float]]):
+def print_analysis_results(analysis_results: Dict[str, Dict[str, float]]):
     """
     Print the analysis results as a table, sorted by lines of code.
 
     Args:
-        analysis_results (dict[str, dict[str, float]]): A dictionary containing the analysis results.
+        analysis_results (Dict[str, Dict[str, float]]): A dictionary containing the analysis results.
     """
     # Sort languages by lines of code
     sorted_results = sorted(analysis_results.items(), key=lambda x: x[1]['lines_of_code'], reverse=True)
 
+    # Compute totals
+    total_loc = sum(result['lines_of_code'] for _, result in sorted_results)
+    total_tokens = sum(result['tokens'] for _, result in sorted_results)
+    total_tokens_per_line = total_tokens / total_loc if total_loc > 0 else 0
+    sorted_results.insert(0, ('Total', {'lines_of_code': total_loc, 'tokens': total_tokens, 'tokens_per_line': total_tokens_per_line}))
+
     # Print header
     print("\nResults:")
-    print("{:<20} {:<15} {:<15} {:<15}".format("Language", "Lines of code", "Tokens", "Tokens per line"))
+    print(f"{'Language':<20} {'Lines of code':<15} {'Tokens':<15} {'Tokens per line':<15}")
 
     # Print rows
     for language, result in sorted_results:
-        print("{:<20} {:<15} {:<15} {:<15.2f}".format(language, result['lines_of_code'], result['tokens'], result['tokens_per_line']))
+        loc = result['lines_of_code']
+        tokens = result['tokens']
+        tokens_per_line = result['tokens_per_line']
+        print(f"{language:<20} {loc:<15} {tokens:<15} {tokens_per_line:<15.2f}")
 
 
 def main():
