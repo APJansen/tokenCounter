@@ -10,6 +10,7 @@ import tiktoken
 from typing import Optional, Callable, Dict, Tuple
 import json
 from contextlib import contextmanager
+import re
 
 
 def process_files_in_directory(directory_path: str, process_file_func: Callable[[str], int]) -> Dict[str, int]:
@@ -142,23 +143,30 @@ def get_zip_url(repo_url: str) -> str:
     Returns:
         str: The URL of the zip file to download.
     """
-    # Extract the repository owner and name from the URL
-    repo_parts = repo_url.rstrip('/').split('/')[-2:]
-    if len(repo_parts) != 2:
-        raise ValueError("Invalid GitHub repository URL")
+    # Check if the URL contains a branch name
+    branch_pattern = r"https://github.com/([^/]+)/([^/]+)/(?:tree|blob)/([^/]+)"
+    match = re.match(branch_pattern, repo_url)
 
-    owner, repo_name = repo_parts
+    if match:
+        owner, repo_name, branch_name = match.groups()
+    else:
+        # Extract the repository owner and name from the URL
+        repo_parts = repo_url.rstrip('/').split('/')[-2:]
+        if len(repo_parts) != 2:
+            raise ValueError("Invalid GitHub repository URL")
 
-    # Fetch the repository information from the GitHub API
-    api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
-    response = requests.get(api_url)
-    response.raise_for_status()
+        owner, repo_name = repo_parts
 
-    # Extract the default branch name
-    repo_info = json.loads(response.text)
-    default_branch = repo_info["default_branch"]
+        # Fetch the repository information from the GitHub API
+        api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+        response = requests.get(api_url)
+        response.raise_for_status()
 
-    return f"{repo_url}/archive/refs/heads/{default_branch}.zip"
+        # Extract the default branch name
+        repo_info = json.loads(response.text)
+        branch_name = repo_info["default_branch"]
+
+    return f"https://github.com/{owner}/{repo_name}/archive/refs/heads/{branch_name}.zip"
 
 def analyze_repository(directory_path: str) -> dict[str, dict[str, float]]:
     """
