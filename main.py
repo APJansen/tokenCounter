@@ -5,7 +5,9 @@ import os
 import shutil
 from pygments.lexers import get_lexer_for_filename, guess_lexer_for_filename
 from pygments.util import ClassNotFound
+from pygments.lexer import Lexer
 import tiktoken
+from typing import Optional
 
 
 def count_tokens(text: str) -> int:
@@ -47,13 +49,8 @@ def count_tokens_in_directory(directory_path: str) -> dict[str, int]:
             except UnicodeDecodeError:
                 continue
 
-            try:
-                lexer = get_lexer_for_filename(file_path, content)
-            except ClassNotFound:
-                try:
-                    lexer = guess_lexer_for_filename(file_path, content)
-                except ClassNotFound:
-                    continue
+            lexer = get_lexer(file_path, content)
+            if not lexer: continue
 
             language = lexer.name
             token_count = count_tokens(content)
@@ -81,13 +78,8 @@ def count_lines_of_code(file_path: str) -> int:
     except UnicodeDecodeError:
         return 0
 
-    try:
-        lexer = get_lexer_for_filename(file_path, content)
-    except ClassNotFound:
-        try:
-            lexer = guess_lexer_for_filename(file_path, content)
-        except ClassNotFound:
-            return 0
+    lexer = get_lexer(file_path, content)
+    if not lexer: return 0
 
     return sum(1 for _ in lexer.get_lines(content))
 
@@ -116,13 +108,8 @@ def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
             except UnicodeDecodeError:
                 continue
 
-            try:
-                lexer = get_lexer_for_filename(file_path, content)
-            except ClassNotFound:
-                try:
-                    lexer = guess_lexer_for_filename(file_path, content)
-                except ClassNotFound:
-                    continue
+            lexer = get_lexer(file_path, content)
+            if not lexer: continue
 
             language = lexer.name
             lines_of_code = content.count('\n')
@@ -133,6 +120,25 @@ def count_lines_of_code_in_directory(directory_path: str) -> dict[str, int]:
             loc_by_language[language] += lines_of_code
 
     return loc_by_language
+
+def get_lexer(file_path: str, content: str) -> Optional[Lexer]:
+    """
+    Get the appropriate lexer for a given file path and content.
+
+    Args:
+        file_path (str): The path to the file.
+        content (str): The content of the file.
+
+    Returns:
+        Optional[Lexer]: The lexer instance, or None if no suitable lexer is found.
+    """
+    try:
+        return get_lexer_for_filename(file_path, content)
+    except ClassNotFound:
+        try:
+            return guess_lexer_for_filename(file_path, content)
+        except ClassNotFound:
+            return None
 
 def extract_zip_to_temp_dir(zip_path: str) -> str:
     """
@@ -176,7 +182,7 @@ def get_zip_url(repo_url: str) -> str:
     Returns:
         str: The URL of the zip file to download.
     """
-    return f"{repo_url}/archive/refs/heads/main.zip"
+    return f"{repo_url}/archive/refs/heads/master.zip"
 
 
 def analyze_repository(directory_path: str) -> dict[str, dict[str, float]]:
