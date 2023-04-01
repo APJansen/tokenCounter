@@ -8,6 +8,7 @@ from pygments.util import ClassNotFound
 from pygments.lexer import Lexer
 import tiktoken
 from typing import Optional
+from contextlib import contextmanager
 
 
 def count_tokens(text: str) -> int:
@@ -140,22 +141,17 @@ def get_lexer(file_path: str, content: str) -> Optional[Lexer]:
         except ClassNotFound:
             return None
 
-def extract_zip_to_temp_dir(zip_path: str) -> str:
+def extract_zip_to_temp_dir(zip_path: str, temp_dir: str) -> None:
     """
-    Extract a zip file to a temporary directory.
+    Extract a zip file to a specified directory.
 
     Args:
         zip_path (str): The path to the zip file.
-
-    Returns:
-        str: The path to the temporary directory containing the extracted files.
+        temp_dir (str): The path to the directory where the zip file should be extracted.
     """
-    temp_dir = tempfile.mkdtemp()
-
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(temp_dir)
 
-    return temp_dir
 
 def download_repo_zip(url: str, target_path: str):
     """
@@ -212,6 +208,20 @@ def analyze_repository(directory_path: str) -> dict[str, dict[str, float]]:
 
     return analysis_results
 
+@contextmanager
+def TemporaryDirectoryWithZip(zip_url: str):
+    temp_dir = tempfile.mkdtemp()
+    zip_path = os.path.join(temp_dir, "repo.zip")
+
+    try:
+        download_repo_zip(zip_url, zip_path)
+
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+        yield temp_dir
+    finally:
+        shutil.rmtree(temp_dir)
+
 def print_analysis_results(analysis_results: dict[str, dict[str, float]]):
     """
     Print the analysis results as a table, sorted by lines of code.
@@ -239,21 +249,13 @@ def main():
     """
     repo_url = input("Enter the GitHub repository URL (e.g., https://github.com/user/repo): ").strip()
     zip_url = get_zip_url(repo_url)
-    zip_path = "repo.zip"
 
-    print("Downloading repository...")
-    download_repo_zip(zip_url, zip_path)
+    print("Downloading and extracting repository...")
+    with TemporaryDirectoryWithZip(zip_url) as temp_dir:
+        print("Analyzing repository...")
+        analysis_results = analyze_repository(temp_dir)
 
-    print("Extracting repository...")
-    temp_dir = extract_zip_to_temp_dir(zip_path)
-
-    print("Analyzing repository...")
-    analysis_results = analyze_repository(temp_dir)
-
-    print_analysis_results(analysis_results)
-
-    os.remove(zip_path)
-    shutil.rmtree(temp_dir)
+        print_analysis_results(analysis_results)
 
 
 if __name__ == "__main__":
