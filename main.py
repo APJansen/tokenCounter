@@ -12,6 +12,7 @@ import json
 from contextlib import contextmanager
 import re
 from tqdm import tqdm
+import sys
 
 
 def process_files_in_directory(directory_path: str, process_file_func: Callable[[str], int]) -> Dict[str, int]:
@@ -242,13 +243,18 @@ def print_analysis_results(analysis_results: Dict[str, Dict[str, float]]):
         print(f"{language:<20} {loc:<15} {tokens:<15} {tokens_per_line:<15.2f}")
 
 
+
 def main():
     """
-    Main function for the script. Prompts the user for a GitHub repository URL,
+    Main function for the script. Takes a GitHub repository URL as a command line argument,
     downloads the repository, analyzes the lines of code and tokens in the source code files,
     and displays the results.
     """
-    repo_url = input("Enter the GitHub repository URL (e.g., https://github.com/user/repo): ").strip()
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <GitHub_repository_URL>")
+        sys.exit(1)
+
+    repo_url = sys.argv[1].strip()
     zip_url = get_zip_url(repo_url)
 
     print("Downloading and extracting repository...")
@@ -257,7 +263,6 @@ def main():
         analysis_results = analyze_repository(temp_dir)
 
         print_analysis_results(analysis_results)
-
 
 if __name__ == "__main__":
     main()
